@@ -16,4 +16,6 @@ public interface StockRepository extends JpaRepository<Stock, Long> {
 
     // Custom query — search stocks where name contains a keyword
     List<Stock> findByStockNameContainingIgnoreCase(String keyword);
+    // Returns only stocks where available qty is greater than 0
+    List<Stock> findByAvailableQtyGreaterThan(int qty);
 }

@@ -16,9 +16,11 @@ public class StockController {
 
     // GET http://localhost:8080/api/stocks
     // Returns ALL stocks — this is what Angular Page 1 calls on load
+    // GET http://localhost:8080/api/stocks
+// Returns only stocks with available qty > 0
     @GetMapping
     public List<Stock> getAllStocks() {
-        return stockService.getAllStocks();
+        return stockService.getAvailableStocks(); // Changed to getAvailableStocks
     }
 
     // GET http://localhost:8080/api/stocks/1
@@ -61,5 +63,18 @@ public class StockController {
     @DeleteMapping("/{id}")
     public void deleteStock(@PathVariable Long id) {
         stockService.deleteStock(id);
+    }
+    // PUT http://localhost:8080/api/stocks/reduce/1?qty=5
+// Reduces available qty when user buys
+    @PutMapping("/reduce/{stockId}")
+    public Stock reduceQty(@PathVariable Long stockId, @RequestParam int qty) {
+        return stockService.reduceStockQty(stockId, qty);
+    }
+
+    // PUT http://localhost:8080/api/stocks/increase/1?qty=5
+// Increases available qty when user sells
+    @PutMapping("/increase/{stockId}")
+    public Stock increaseQty(@PathVariable Long stockId, @RequestParam int qty) {
+        return stockService.increaseStockQty(stockId, qty);
     }
 }

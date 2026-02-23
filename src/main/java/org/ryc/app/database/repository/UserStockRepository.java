@@ -15,4 +15,6 @@ public interface UserStockRepository extends JpaRepository<UserStock, Long> {
 
     // Get all stocks owned by user filtered by stockId
     List<UserStock> findByStockId(Long stockId);
+
+
 }

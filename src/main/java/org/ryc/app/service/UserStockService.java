@@ -1,21 +1,26 @@
 package org.ryc.app.service;
 
+import org.ryc.app.database.entity.Transaction;
 import org.ryc.app.database.entity.UserStock;
+import org.ryc.app.database.repository.TransactionRepository;
 import org.ryc.app.database.repository.UserStockRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
 
-@Service // Marks this as a Spring service — holds business logic
+@Service
 public class UserStockService {
 
-    @Autowired // Spring auto-injects the UserStockRepository bean here
+    @Autowired
     private UserStockRepository userStockRepository;
 
-    // Get ALL stocks owned by the user (used by Page 2 Part 1)
+    @Autowired
+    private TransactionRepository transactionRepository; // To save transactions
+
+    // Get ALL stocks owned by the user
     public List<UserStock> getAllUserStocks() {
-        return userStockRepository.findAll(); // SELECT * FROM user_stock
+        return userStockRepository.findAll();
     }
 
     // Get one user stock by its ID
@@ -23,22 +28,65 @@ public class UserStockService {
         return userStockRepository.findById(id);
     }
 
-    // Add a new stock to user portfolio (when user buys)
-    public UserStock addUserStock(UserStock userStock) {
-        return userStockRepository.save(userStock);
+    // Add or update stock in user portfolio when user buys
+    public UserStock buyUserStock(UserStock userStock) {
+
+        // Step 1 — Save BUY transaction record
+        Transaction transaction = new Transaction();
+        transaction.setStockId(userStock.getStockId());
+        transaction.setStockName(userStock.getStockName());
+        transaction.setStockTicker(userStock.getStockTicker());
+        transaction.setTransactionType("BUY");
+        transaction.setQty(userStock.getQty());
+        transaction.setPrice(userStock.getPrice());
+        transaction.setTotalValue(userStock.getPrice() * userStock.getQty()); // qty x price
+        transactionRepository.save(transaction); // Save to transaction table
+
+        // Step 2 — Check if user already owns this stock
+        List<UserStock> existing = userStockRepository.findByStockId(userStock.getStockId());
+
+        if (!existing.isEmpty()) {
+            // User already owns this stock — just increase qty
+            UserStock owned = existing.get(0);
+            owned.setQty(owned.getQty() + userStock.getQty());
+            return userStockRepository.save(owned);
+        } else {
+            // User doesn't own this stock — add new record
+            return userStockRepository.save(userStock);
+        }
     }
 
-    // Update user stock qty or price
-    public UserStock updateUserStock(Long id, UserStock updatedUserStock) {
+    // Reduce qty when user sells
+    public void sellUserStock(Long id, int qty) {
         UserStock existing = userStockRepository.findById(id).orElseThrow();
-        existing.setStockName(updatedUserStock.getStockName());
-        existing.setStockTicker(updatedUserStock.getStockTicker());
-        existing.setQty(updatedUserStock.getQty());
-        existing.setPrice(updatedUserStock.getPrice());
-        return userStockRepository.save(existing);
+
+        if (existing.getQty() < qty) {
+            throw new RuntimeException("Not enough shares to sell!");
+        }
+
+        // Step 1 — Save SELL transaction record
+        Transaction transaction = new Transaction();
+        transaction.setStockId(existing.getStockId());
+        transaction.setStockName(existing.getStockName());
+        transaction.setStockTicker(existing.getStockTicker());
+        transaction.setTransactionType("SELL");
+        transaction.setQty(qty);
+        transaction.setPrice(existing.getPrice());
+        transaction.setTotalValue(existing.getPrice() * qty); // qty x price
+        transactionRepository.save(transaction); // Save to transaction table
+
+        // Step 2 — Update user stock qty
+        if (existing.getQty() == qty) {
+            // User is selling all shares — delete the record
+            userStockRepository.deleteById(id);
+        } else {
+            // User is selling some shares — reduce qty
+            existing.setQty(existing.getQty() - qty);
+            userStockRepository.save(existing);
+        }
     }
 
-    // Delete a user stock by ID (when user sells)
+    // Delete a user stock by ID
     public void deleteUserStock(Long id) {
         userStockRepository.deleteById(id);
     }

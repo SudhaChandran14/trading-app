@@ -5,14 +5,15 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.time.LocalDateTime;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "user_stock")
-public class UserStock {
+@Table(name = "transaction")
+public class Transaction {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,7 +25,18 @@ public class UserStock {
 
     private String stockTicker;
 
+    private String transactionType;
+
     private Integer qty;
 
     private Double price;
+
+    private Double totalValue;
+
+    private LocalDateTime transactionDate;
+
+    @PrePersist
+    public void prePersist() {
+        this.transactionDate = LocalDateTime.now();
+    }
 }

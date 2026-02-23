@@ -52,4 +52,30 @@ public class StockService {
     public void deleteStock(Long stockId) {
         stockRepository.deleteById(stockId);
     }
+    // Reduce available qty when user buys
+    public Stock reduceStockQty(Long stockId, int qty) {
+        Stock existing = stockRepository.findById(stockId).orElseThrow();
+
+        // Check if enough qty is available
+        if (existing.getAvailableQty() < qty) {
+            throw new RuntimeException("Not enough stock available!");
+        }
+
+        // Reduce the qty
+        existing.setAvailableQty(existing.getAvailableQty() - qty);
+        return stockRepository.save(existing);
+    }
+
+    // Increase available qty when user sells
+    public Stock increaseStockQty(Long stockId, int qty) {
+        Stock existing = stockRepository.findById(stockId).orElseThrow();
+
+        // Add qty back to market
+        existing.setAvailableQty(existing.getAvailableQty() + qty);
+        return stockRepository.save(existing);
+    }
+    // Get only stocks with available qty greater than 0
+    public List<Stock> getAvailableStocks() {
+        return stockRepository.findByAvailableQtyGreaterThan(0);
+    }
 }
