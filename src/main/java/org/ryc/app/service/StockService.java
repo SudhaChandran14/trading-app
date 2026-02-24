@@ -2,80 +2,101 @@ package org.ryc.app.service;
 
 import org.ryc.app.database.entity.Stock;
 import org.ryc.app.database.repository.StockRepository;
+import org.ryc.app.rest.dto.StockRequest;
+import org.ryc.app.rest.dto.StockResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.List;
-import java.util.Optional;
+import java.util.stream.Collectors;
 
-@Service // Marks this as a Spring service — holds business logic
+@Service
 public class StockService {
 
-    @Autowired // Spring auto-injects the StockRepository bean here
+    @Autowired
     private StockRepository stockRepository;
 
-    // Get ALL stocks from the market (used by Page 1)
-    public List<Stock> getAllStocks() {
-        return stockRepository.findAll(); // SELECT * FROM stock
+    // Convert Entity → Response DTO
+    private StockResponse toResponse(Stock stock) {
+        return StockResponse.builder()
+                .stockId(stock.getStockId())
+                .stockName(stock.getStockName())
+                .stockTicker(stock.getStockTicker())
+                .stockPrice(stock.getStockPrice())
+                .availableQty(stock.getAvailableQty())
+                .build();
     }
 
-    // Get one stock by its ID
-    public Optional<Stock> getStockById(Long stockId) {
-        return stockRepository.findById(stockId);
+    // Convert Request DTO → Entity
+    private Stock toEntity(StockRequest request) {
+        return Stock.builder()
+                .stockName(request.getStockName())
+                .stockTicker(request.getStockTicker())
+                .stockPrice(request.getStockPrice())
+                .availableQty(request.getAvailableQty())
+                .build();
     }
 
-    // Get one stock by its ticker symbol e.g. "AAPL"
-    public Stock getStockByTicker(String ticker) {
-        return stockRepository.findByStockTicker(ticker);
+    // Get all stocks with qty > 0
+    public List<StockResponse> getAvailableStocks() {
+        return stockRepository.findByAvailableQtyGreaterThan(0)
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
     }
 
-    // Search stocks by name keyword (for search bar on Page 1)
-    public List<Stock> searchByName(String keyword) {
-        return stockRepository.findByStockNameContainingIgnoreCase(keyword);
+    // Get one stock by ID
+    public StockResponse getStockById(Long stockId) {
+        Stock stock = stockRepository.findById(stockId).orElseThrow();
+        return toResponse(stock);
     }
 
-    // Add a new stock to the market
-    public Stock addStock(Stock stock) {
-        return stockRepository.save(stock);
+    // Get stock by ticker
+    public StockResponse getStockByTicker(String ticker) {
+        return toResponse(stockRepository.findByStockTicker(ticker));
     }
 
-    // Update stock price or available qty
-    public Stock updateStock(Long stockId, Stock updatedStock) {
+    // Search stocks by name
+    public List<StockResponse> searchByName(String keyword) {
+        return stockRepository.findByStockNameContainingIgnoreCase(keyword)
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    // Add new stock
+    public StockResponse addStock(StockRequest request) {
+        return toResponse(stockRepository.save(toEntity(request)));
+    }
+
+    // Update stock
+    public StockResponse updateStock(Long stockId, StockRequest request) {
         Stock existing = stockRepository.findById(stockId).orElseThrow();
-        existing.setStockName(updatedStock.getStockName());
-        existing.setStockTicker(updatedStock.getStockTicker());
-        existing.setStockPrice(updatedStock.getStockPrice());
-        existing.setAvailableQty(updatedStock.getAvailableQty());
-        return stockRepository.save(existing);
+        existing.setStockName(request.getStockName());
+        existing.setStockTicker(request.getStockTicker());
+        existing.setStockPrice(request.getStockPrice());
+        existing.setAvailableQty(request.getAvailableQty());
+        return toResponse(stockRepository.save(existing));
     }
 
-    // Delete a stock by ID
+    // Delete stock
     public void deleteStock(Long stockId) {
         stockRepository.deleteById(stockId);
     }
-    // Reduce available qty when user buys
-    public Stock reduceStockQty(Long stockId, int qty) {
-        Stock existing = stockRepository.findById(stockId).orElseThrow();
 
-        // Check if enough qty is available
+    // Reduce qty when user buys
+    public StockResponse reduceStockQty(Long stockId, int qty) {
+        Stock existing = stockRepository.findById(stockId).orElseThrow();
         if (existing.getAvailableQty() < qty) {
             throw new RuntimeException("Not enough stock available!");
         }
-
-        // Reduce the qty
         existing.setAvailableQty(existing.getAvailableQty() - qty);
-        return stockRepository.save(existing);
+        return toResponse(stockRepository.save(existing));
     }
 
-    // Increase available qty when user sells
-    public Stock increaseStockQty(Long stockId, int qty) {
+    // Increase qty when user sells
+    public StockResponse increaseStockQty(Long stockId, int qty) {
         Stock existing = stockRepository.findById(stockId).orElseThrow();
-
-        // Add qty back to market
         existing.setAvailableQty(existing.getAvailableQty() + qty);
-        return stockRepository.save(existing);
-    }
-    // Get only stocks with available qty greater than 0
-    public List<Stock> getAvailableStocks() {
-        return stockRepository.findByAvailableQtyGreaterThan(0);
+        return toResponse(stockRepository.save(existing));
     }
 }

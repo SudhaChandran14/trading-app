@@ -1,6 +1,7 @@
-package org.ryc.app.restcontroller;
+package org.ryc.app.rest.controller;
 
-import org.ryc.app.database.entity.UserStock;
+import org.ryc.app.rest.dto.UserStockRequest;
+import org.ryc.app.rest.dto.UserStockResponse;
 import org.ryc.app.service.UserStockService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -15,35 +16,30 @@ public class UserStockController {
     private UserStockService userStockService;
 
     // GET http://localhost:8080/api/userstocks
-    // Returns ALL user stocks
     @GetMapping
-    public List<UserStock> getAllUserStocks() {
+    public List<UserStockResponse> getAllUserStocks() {
         return userStockService.getAllUserStocks();
     }
 
     // GET http://localhost:8080/api/userstocks/1
-    // Returns one user stock by ID
     @GetMapping("/{id}")
-    public UserStock getUserStockById(@PathVariable Long id) {
-        return userStockService.getUserStockById(id).orElseThrow();
+    public UserStockResponse getUserStockById(@PathVariable Long id) {
+        return userStockService.getUserStockById(id);
     }
 
     // POST http://localhost:8080/api/userstocks/buy
-    // Adds stock to user portfolio when user buys
     @PostMapping("/buy")
-    public UserStock buyUserStock(@RequestBody UserStock userStock) {
-        return userStockService.buyUserStock(userStock);
+    public UserStockResponse buyUserStock(@RequestBody UserStockRequest request) {
+        return userStockService.buyUserStock(request);
     }
 
     // PUT http://localhost:8080/api/userstocks/sell/1?qty=5
-    // Reduces qty from user portfolio when user sells
     @PutMapping("/sell/{id}")
     public void sellUserStock(@PathVariable Long id, @RequestParam int qty) {
         userStockService.sellUserStock(id, qty);
     }
 
     // DELETE http://localhost:8080/api/userstocks/1
-    // Deletes a user stock by ID
     @DeleteMapping("/{id}")
     public void deleteUserStock(@PathVariable Long id) {
         userStockService.deleteUserStock(id);
